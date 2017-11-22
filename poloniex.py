@@ -5,8 +5,8 @@ import hashlib
 import requests
 
 
-def create_time_stamp(datestr, format="%Y-%m-%d %H:%M:%S"):
-    return time.mktime(time.strptime(datestr, format))
+def create_time_stamp(datestr, date_format="%Y-%m-%d %H:%M:%S"):
+    return time.mktime(time.strptime(datestr, date_format))
 
 
 class Poloniex:
@@ -31,18 +31,16 @@ class Poloniex:
             req = {}
 
         if command == 'returnTicker' or command == 'return24Volume':
-            ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + command))
-            return json.loads(ret.read())
+            response = requests.get('https://poloniex.com/public?command=' + command)
+            return json.loads(response.content)
         elif command == 'returnOrderBook':
-            ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + command + '&currencyPair=' + str(req['currencyPair'])))
-            return json.loads(ret.read())
+            response = requests.get('https://poloniex.com/public?command=' + command + '&currencyPair=' + str(req['currencyPair']))
+            return json.loads(response.content)
         elif command == 'returnMarketTradeHistory':
-            ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(req['currencyPair'])))
-            return json.loads(ret.read())
+            response = requests.get('https://poloniex.com/public?command=' + "returnTradeHistory" + '&currencyPair=' + str(req['currencyPair']))
+            return json.loads(response.content)
         else:
-            req['command'] = command
-            req['nonce'] = int(time.time()*1000)
-            post_data = urllib.urlencode(req)
+            post_data = '{}={}&{}={}'.format('command', command, 'nonce', int(time.time()*1000))
 
             sign = hmac.new(self.secret, post_data, hashlib.sha512).hexdigest()
             headers = {
@@ -50,9 +48,8 @@ class Poloniex:
                 'Key': self.apikey
             }
 
-            ret = urllib2.urlopen(urllib2.Request('https://poloniex.com/tradingApi', post_data, headers))
-            jsonRet = json.loads(ret.read())
-            return self.post_process(jsonRet)
+            response = requests.get('https://poloniex.com/tradingApi', post_data, **headers)
+            return self.post_process(json.loads(response.content))
 
     def return_ticker(self):
         return self.api_query('returnTicker')
@@ -63,7 +60,7 @@ class Poloniex:
     def return_order_book(self, currency_pair):
         return self.api_query('returnOrderBook', {'currencyPair': currency_pair})
 
-    def return_market_trade_history (self, currency_pair):
+    def return_market_trade_history(self, currency_pair):
         return self.api_query('returnMarketTradeHistory', {'currencyPair': currency_pair})
 
     def return_balances(self):
@@ -85,7 +82,6 @@ class Poloniex:
             total         Total value of order (price * quantity)
         """
         return self.api_query('returnOpenOrders', {"currencyPair": currency_pair})
-
 
     def return_trade_history(self, currency_pair):
         """
